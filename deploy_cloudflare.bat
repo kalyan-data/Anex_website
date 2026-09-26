@@ -27,12 +27,12 @@ if %ERRORLEVEL% neq 0 (
 )
 
 echo.
-echo [2/2] Deploying Website folder to Cloudflare Pages (anextasks)...
-call npx wrangler pages deploy . --project-name anextasks --commit-dirty=true
+echo [2/2] Deploying Website folder to Cloudflare (anex-website)...
+call npx wrangler deploy
 if %ERRORLEVEL% neq 0 (
     echo.
-    echo Pages deploy failed. Trying Worker deployment...
-    call npx wrangler deploy
+    echo Worker deploy failed. Trying Pages deployment...
+    call npx wrangler pages deploy . --project-name anex-website --commit-dirty=true
 )
 
 echo.
