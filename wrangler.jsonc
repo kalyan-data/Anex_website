@@ -1,5 +1,10 @@
 {
-  "name": "anextasks",
+  "name": "anex-website",
   "compatibility_date": "2026-09-25",
-  "pages_build_output_dir": "./"
+  "workers_dev": true,
+  "preview_urls": true,
+  "assets": {
+    "directory": "./",
+    "not_found_handling": "single-page-application"
+  }
 }
