@@ -1,0 +1,889 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ANEX - Cloud Portal & Authentication</title>
+    <link rel="icon" type="image/png" href="favicon.png"/>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Supabase JS Client v2 (Matches Android APK Backend) -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-hover: #4f46e5;
+            --primary-glow: rgba(99, 102, 241, 0.35);
+            --bg-dark: #090d16;
+            --card-bg: rgba(15, 23, 42, 0.72);
+            --card-border: rgba(255, 255, 255, 0.1);
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --accent-green: #10b981;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+
+        body {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            align-items: center;
+            background-color: var(--bg-dark);
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.15) 0px, transparent 50%),
+                radial-gradient(at 100% 0%, rgba(168, 85, 247, 0.12) 0px, transparent 50%),
+                radial-gradient(at 50% 100%, rgba(14, 165, 233, 0.12) 0px, transparent 50%),
+                linear-gradient(180deg, #090d16 0%, #0c1222 50%, #080c14 100%);
+            color: var(--text-main);
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        /* Ambient floating light orbs */
+        .ambient-orb {
+            position: fixed;
+            border-radius: 50%;
+            filter: blur(80px);
+            pointer-events: none;
+            z-index: 0;
+            opacity: 0.6;
+        }
+        .orb-1 {
+            width: 320px;
+            height: 320px;
+            background: rgba(99, 102, 241, 0.25);
+            top: -60px;
+            left: -60px;
+        }
+        .orb-2 {
+            width: 300px;
+            height: 300px;
+            background: rgba(139, 92, 246, 0.2);
+            bottom: -50px;
+            right: -50px;
+        }
+
+        /* ========================================== */
+        /* WEBSITE TOP NAVIGATION BAR                */
+        /* ========================================== */
+        .site-header {
+            position: relative;
+            z-index: 20;
+            width: 100%;
+            max-width: 1200px;
+            padding: 16px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .header-brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            text-decoration: none;
+            color: white;
+        }
+
+        .logo-icon {
+            width: 34px;
+            height: 34px;
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 14px rgba(99, 102, 241, 0.4);
+        }
+
+        .brand-text {
+            font-size: 17px;
+            font-weight: 800;
+            letter-spacing: -0.3px;
+            color: #ffffff;
+        }
+
+        .brand-badge {
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            padding: 2px 7px;
+            border-radius: 6px;
+            background: rgba(99, 102, 241, 0.2);
+            border: 1px solid rgba(99, 102, 241, 0.4);
+            color: #a5b4fc;
+            text-transform: uppercase;
+        }
+
+        .header-meta {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .status-pill {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 5px 11px;
+            background: rgba(16, 185, 129, 0.12);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            border-radius: 20px;
+            font-size: 11.5px;
+            font-weight: 600;
+            color: #34d399;
+        }
+
+        .status-dot {
+            width: 7px;
+            height: 7px;
+            background: #10b981;
+            border-radius: 50%;
+            box-shadow: 0 0 8px #10b981;
+            animation: pulse-dot 2s infinite ease-in-out;
+        }
+
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(0.85); }
+        }
+
+        /* ========================================== */
+        /* MAIN AUTH CONTENT                          */
+        /* ========================================== */
+        .main-wrapper {
+            position: relative;
+            z-index: 10;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 12px 16px 24px;
+        }
+
+        /* Active Session Banner */
+        .session-banner {
+            display: none;
+            width: 100%;
+            max-width: 370px;
+            padding: 10px 14px;
+            border-radius: 12px;
+            background: rgba(99, 102, 241, 0.15);
+            border: 1px solid rgba(99, 102, 241, 0.35);
+            font-size: 12.5px;
+            color: #c7d2fe;
+            margin-bottom: 14px;
+            text-align: center;
+        }
+        .session-banner a {
+            color: #ffffff;
+            font-weight: 700;
+            text-decoration: underline;
+            margin-left: 6px;
+            cursor: pointer;
+        }
+
+        /* 3D Flip Card Container */
+        .card-container {
+            width: 100%;
+            max-width: 375px;
+            perspective: 1000px;
+        }
+
+        .card-flipper {
+            position: relative;
+            width: 100%;
+            transform-style: preserve-3d;
+            transition: transform 0.65s cubic-bezier(0.2, 0.8, 0.2, 1);
+            transform:
+                rotateX(var(--rx, 0deg))
+                rotateY(calc(var(--ry, 0deg) + var(--flip-deg, 0deg)));
+        }
+
+        .card-flipper.is-flipped {
+            --flip-deg: 180deg;
+        }
+
+        .card-face {
+            width: 100%;
+            padding: 28px 24px;
+            border-radius: 22px;
+            background: var(--card-bg);
+            backdrop-filter: blur(24px) saturate(1.4);
+            -webkit-backdrop-filter: blur(24px) saturate(1.4);
+            border: 1px solid var(--card-border);
+            box-shadow:
+                0 20px 50px rgba(0, 0, 0, 0.5),
+                inset 0 1px 1px rgba(255, 255, 255, 0.15);
+            backface-visibility: hidden;
+            -webkit-backface-visibility: hidden;
+        }
+
+        .card-front {
+            position: relative;
+        }
+
+        .card-back {
+            position: absolute;
+            top: 0;
+            left: 0;
+            transform: rotateY(180deg);
+        }
+
+        .card-title {
+            font-size: 22px;
+            font-weight: 800;
+            letter-spacing: -0.4px;
+            margin-bottom: 4px;
+            color: #ffffff;
+        }
+
+        .card-subtitle {
+            font-size: 13px;
+            color: var(--text-muted);
+            margin-bottom: 18px;
+            line-height: 1.4;
+        }
+
+        /* Alerts */
+        .alert-banner {
+            display: none;
+            padding: 8px 12px;
+            border-radius: 9px;
+            font-size: 12px;
+            margin-bottom: 14px;
+            line-height: 1.35;
+        }
+        .alert-banner.error {
+            display: block;
+            background: rgba(239, 68, 68, 0.18);
+            border: 1px solid rgba(239, 68, 68, 0.4);
+            color: #fca5a5;
+        }
+        .alert-banner.success {
+            display: block;
+            background: rgba(16, 185, 129, 0.18);
+            border: 1px solid rgba(16, 185, 129, 0.4);
+            color: #6ee7b7;
+        }
+
+        /* Compact Form Controls */
+        .form-group {
+            margin-bottom: 13px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 12px;
+            font-weight: 600;
+            color: #cbd5e1;
+            margin-bottom: 5px;
+        }
+
+        .input-wrap {
+            position: relative;
+        }
+
+        .input-wrap input {
+            width: 100%;
+            height: 44px;
+            padding: 0 14px;
+            border-radius: 11px;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            background: rgba(255, 255, 255, 0.05);
+            color: white;
+            font-size: 14px;
+            outline: none;
+            transition: all 0.2s ease;
+        }
+
+        .input-wrap input:focus {
+            border-color: #818cf8;
+            background: rgba(255, 255, 255, 0.09);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.25);
+        }
+
+        .input-wrap input::placeholder {
+            color: #64748b;
+            font-size: 13px;
+        }
+
+        .form-row-compact {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 6px 0 16px;
+            font-size: 12px;
+        }
+
+        .remember-checkbox {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            color: #94a3b8;
+            cursor: pointer;
+            user-select: none;
+        }
+        .remember-checkbox input {
+            accent-color: var(--primary);
+            cursor: pointer;
+        }
+
+        .forgot-link {
+            color: #818cf8;
+            text-decoration: none;
+            font-weight: 500;
+            cursor: pointer;
+        }
+        .forgot-link:hover {
+            text-decoration: underline;
+            color: #a5b4fc;
+        }
+
+        /* Buttons */
+        .submit-btn {
+            width: 100%;
+            height: 45px;
+            border: none;
+            border-radius: 11px;
+            background: linear-gradient(135deg, #6366f1, #4f46e5);
+            color: white;
+            font-size: 14px;
+            font-weight: 700;
+            letter-spacing: 0.2px;
+            cursor: pointer;
+            box-shadow: 0 4px 16px rgba(99, 102, 241, 0.35);
+            transition: all 0.2s ease;
+        }
+
+        .submit-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 22px rgba(99, 102, 241, 0.45);
+        }
+
+        .submit-btn:active {
+            transform: scale(0.99);
+        }
+
+        .submit-btn:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .divider {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 16px 0 13px;
+            color: #64748b;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .divider::before,
+        .divider::after {
+            content: "";
+            height: 1px;
+            flex: 1;
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .social-grid {
+            display: flex;
+            gap: 10px;
+        }
+
+        .social-btn {
+            flex: 1;
+            height: 40px;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(255, 255, 255, 0.04);
+            color: #cbd5e1;
+            font-size: 13px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 7px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .social-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.2);
+            color: white;
+        }
+
+        .flip-cta {
+            text-align: center;
+            margin-top: 16px;
+            font-size: 12.5px;
+            color: var(--text-muted);
+        }
+
+        .flip-cta span {
+            color: #818cf8;
+            font-weight: 700;
+            cursor: pointer;
+            margin-left: 3px;
+        }
+
+        .flip-cta span:hover {
+            text-decoration: underline;
+            color: #a5b4fc;
+        }
+
+        /* ========================================== */
+        /* WEBSITE FOOTER                             */
+        /* ========================================== */
+        .site-footer {
+            position: relative;
+            z-index: 20;
+            width: 100%;
+            padding: 16px 20px;
+            text-align: center;
+            font-size: 11.5px;
+            color: #64748b;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .site-footer span {
+            color: #94a3b8;
+        }
+
+        /* Mobile specific adjustments */
+        @media (max-width: 480px) {
+            .site-header {
+                padding: 12px 16px;
+            }
+            .brand-badge {
+                display: none;
+            }
+            .card-face {
+                padding: 22px 18px;
+                border-radius: 18px;
+            }
+            .card-title {
+                font-size: 20px;
+            }
+            .card-subtitle {
+                font-size: 12.5px;
+                margin-bottom: 15px;
+            }
+            .input-wrap input {
+                height: 42px;
+                font-size: 13.5px;
+            }
+            .submit-btn {
+                height: 42px;
+                font-size: 13.5px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="ambient-orb orb-1"></div>
+    <div class="ambient-orb orb-2"></div>
+
+    <!-- 1. WEBSITE HEADER -->
+    <header class="site-header">
+        <a href="/" class="header-brand">
+            <div class="logo-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+            </div>
+            <span class="brand-text">ANEX</span>
+            <span class="brand-badge">CLOUD</span>
+        </a>
+
+        <div class="header-meta">
+            <div class="status-pill">
+                <span class="status-dot"></span>
+                <span>Live Sync</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- 2. MAIN GATEWAY / LOGIN & REGISTER CONTAINER -->
+    <main class="main-wrapper">
+
+        <!-- Active Session banner (if user is already authenticated) -->
+        <div id="sessionBanner" class="session-banner">
+            Signed in as <b id="sessionEmail"></b>
+            <a href="/">Open App &rarr;</a> &bull;
+            <a id="logoutLink" style="color: #f87171;">Sign Out</a>
+        </div>
+
+        <div class="card-container">
+            <div class="card-flipper" id="cardFlipper">
+
+                <!-- ========================================== -->
+                <!-- FRONT FACE: SIGN IN                       -->
+                <!-- ========================================== -->
+                <div class="card-face card-front">
+                    <h1 class="card-title">Sign in to ANEX</h1>
+                    <p class="card-subtitle">Access your unified tasks, reminders, and cloud notes</p>
+
+                    <div id="loginAlert" class="alert-banner"></div>
+
+                    <form id="loginForm">
+                        <div class="form-group">
+                            <label class="form-label" for="loginEmail">Email address</label>
+                            <div class="input-wrap">
+                                <input type="email" id="loginEmail" placeholder="name@example.com" required autocomplete="username">
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label" for="loginPassword">Password</label>
+                            <div class="input-wrap">
+                                <input type="password" id="loginPassword" placeholder="••••••••" required autocomplete="current-password">
+                            </div>
+                        </div>
+
+                        <div class="form-row-compact">
+                            <label class="remember-checkbox">
+                                <input type="checkbox" id="rememberMe" checked>
+                                <span>Keep me signed in</span>
+                            </label>
+                            <a href="#" class="forgot-link" id="forgotBtn">Forgot password?</a>
+                        </div>
+
+                        <button class="submit-btn" id="loginBtn" type="submit">
+                            Sign In
+                        </button>
+                    </form>
+
+                    <div class="divider">or continue with</div>
+
+                    <div class="social-grid">
+                        <button type="button" class="social-btn" onclick="handleSocial('Google')">
+                            <svg width="16" height="16" viewBox="0 0 24 24"><path fill="#EA4335" d="M12 5c1.6 0 3 .6 4.1 1.6l3.1-3.1C17.3 1.7 14.8 1 12 1 7.4 1 3.5 3.6 1.6 7.4l3.7 2.9C6.2 7.1 8.9 5 12 5z"/><path fill="#4285F4" d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.6h6.5c-.3 1.5-1.1 2.8-2.4 3.7l3.7 2.9c2.2-2 3.7-5 3.7-8.9z"/><path fill="#FBBC05" d="M5.3 14.7c-.2-.7-.4-1.5-.4-2.7s.1-2 .4-2.7L1.6 6.4C.6 8.3 0 10.4 0 12.7s.6 4.4 1.6 6.3l3.7-4.3z"/><path fill="#34A853" d="M12 24c3.2 0 6-1.1 8-3l-3.7-2.9c-1.1.7-2.5 1.2-4.3 1.2-3.1 0-5.8-2.1-6.7-5.3L1.6 17c1.9 3.8 5.8 6.4 10.4 6.4z"/></svg>
+                            Google
+                        </button>
+                        <button type="button" class="social-btn" onclick="handleSocial('Apple')">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 6.37c.62-.75 1.04-1.8 1.01-2.85-.9.04-2 .6-2.65 1.35-.58.66-1.09 1.73-.96 2.76 1.01.08 1.98-.51 2.6-1.26z"/></svg>
+                            Apple
+                        </button>
+                    </div>
+
+                    <div class="flip-cta">
+                        Don't have an account?
+                        <span id="toRegisterBtn">Create account ↺</span>
+                    </div>
+                </div>
+
+                <!-- ========================================== -->
+                <!-- BACK FACE: REGISTER (SIGN UP)             -->
+                <!-- ========================================== -->
+                <div class="card-face card-back">
+                    <h1 class="card-title">Create ANEX Account</h1>
+                    <p class="card-subtitle">Syncs automatically with your Android APK & Web</p>
+
+                    <div id="registerAlert" class="alert-banner"></div>
+
+                    <form id="registerForm">
+                        <div class="form-group">
+                            <label class="form-label" for="regFullName">Full Name</label>
+                            <div class="input-wrap">
+                                <input type="text" id="regFullName" placeholder="e.g. Alex Sharma" required autocomplete="name">
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label" for="regEmail">Email address</label>
+                            <div class="input-wrap">
+                                <input type="email" id="regEmail" placeholder="name@example.com" required autocomplete="username">
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label" for="regPassword">Password (min 6 chars)</label>
+                            <div class="input-wrap">
+                                <input type="password" id="regPassword" placeholder="••••••••" required minlength="6" autocomplete="new-password">
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label" for="regConfirmPassword">Confirm Password</label>
+                            <div class="input-wrap">
+                                <input type="password" id="regConfirmPassword" placeholder="••••••••" required minlength="6" autocomplete="new-password">
+                            </div>
+                        </div>
+
+                        <button class="submit-btn" id="regBtn" type="submit" style="margin-top: 4px;">
+                            Create Account
+                        </button>
+                    </form>
+
+                    <div class="flip-cta">
+                        Already have an account?
+                        <span id="toLoginBtn">Sign In here ↺</span>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+    </main>
+
+    <!-- 3. WEBSITE FOOTER -->
+    <footer class="site-footer">
+        ANEX Productivity System &bull; <span>Cloud-Connected with Android APK</span> &bull; 2026
+    </footer>
+
+    <script>
+        // ==========================================
+        // 1. SUPABASE CLIENT INITIALIZATION
+        // Same backend credentials as your Android APK!
+        // ==========================================
+        const SUPABASE_URL = 'https://elhlsqqzeyeyarjhdhdj.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVsaGxzcXF6ZXlleWFyamhkaGRqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkyNTc0MjUsImV4cCI6MjEwNDgzMzQyNX0.QM3OUP8noHEcC9kxBAjMMYTeI0JFtKowS3MBiTerPa4';
+
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        // ==========================================
+        // 2. CHECK EXISTING SESSION
+        // ==========================================
+        const sessionBanner = document.getElementById("sessionBanner");
+        const sessionEmail = document.getElementById("sessionEmail");
+        const logoutLink = document.getElementById("logoutLink");
+
+        const cachedToken = localStorage.getItem('anex_auth_token');
+        const cachedEmail = localStorage.getItem('anex_user_email');
+
+        if (cachedToken && cachedEmail) {
+            sessionEmail.textContent = cachedEmail;
+            sessionBanner.style.display = 'block';
+        }
+
+        logoutLink.addEventListener("click", async () => {
+            try {
+                await supabase.auth.signOut();
+            } catch (_) {}
+            localStorage.removeItem('anex_auth_token');
+            localStorage.removeItem('anex_user_id');
+            localStorage.removeItem('anex_user_email');
+            localStorage.removeItem('sb-elhlsqqzeyeyarjhdhdj-auth-token');
+            sessionBanner.style.display = 'none';
+            showAlert(loginAlert, "Signed out successfully.", "success");
+        });
+
+        // ==========================================
+        // 3. 3D FLIP LOGIC
+        // ==========================================
+        const cardFlipper = document.getElementById("cardFlipper");
+        const toRegisterBtn = document.getElementById("toRegisterBtn");
+        const toLoginBtn = document.getElementById("toLoginBtn");
+
+        toRegisterBtn.addEventListener("click", () => {
+            clearAlerts();
+            cardFlipper.classList.add("is-flipped");
+        });
+
+        toLoginBtn.addEventListener("click", () => {
+            clearAlerts();
+            cardFlipper.classList.remove("is-flipped");
+        });
+
+        // Desktop Pointer Tilt (subtle, non-intrusive)
+        if (window.innerWidth > 600) {
+            document.addEventListener("pointermove", (e) => {
+                const nx = e.clientX / window.innerWidth - 0.5;
+                const ny = e.clientY / window.innerHeight - 0.5;
+                cardFlipper.style.setProperty("--ry", (nx * 6).toFixed(2) + "deg");
+                cardFlipper.style.setProperty("--rx", (-ny * 6).toFixed(2) + "deg");
+            });
+        }
+
+        // ==========================================
+        // 4. ALERTS
+        // ==========================================
+        const loginAlert = document.getElementById("loginAlert");
+        const registerAlert = document.getElementById("registerAlert");
+
+        function showAlert(elem, msg, type = 'error') {
+            elem.className = `alert-banner ${type}`;
+            elem.textContent = msg;
+        }
+
+        function clearAlerts() {
+            loginAlert.className = 'alert-banner';
+            loginAlert.textContent = '';
+            registerAlert.className = 'alert-banner';
+            registerAlert.textContent = '';
+        }
+
+        // ==========================================
+        // 5. SIGN IN (SUPABASE AUTH)
+        // ==========================================
+        const loginForm = document.getElementById("loginForm");
+        const loginBtn = document.getElementById("loginBtn");
+
+        loginForm.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            clearAlerts();
+
+            const email = document.getElementById("loginEmail").value.trim();
+            const password = document.getElementById("loginPassword").value;
+
+            loginBtn.textContent = "Verifying...";
+            loginBtn.disabled = true;
+
+            try {
+                const { data, error } = await supabase.auth.signInWithPassword({
+                    email: email,
+                    password: password
+                });
+
+                if (error) throw error;
+
+                loginBtn.textContent = "Success ✓";
+                loginBtn.style.background = "linear-gradient(135deg, #10b981, #059669)";
+                showAlert(loginAlert, "Login verified! Opening ANEX Workspace...", "success");
+
+                // Store credentials for gatekeeper
+                if (data?.session) {
+                    localStorage.setItem('anex_auth_token', data.session.access_token);
+                    localStorage.setItem('anex_user_id', data.user.id);
+                    localStorage.setItem('anex_user_email', data.user.email);
+                }
+
+                setTimeout(() => {
+                    window.location.href = "/";
+                }, 800);
+
+            } catch (err) {
+                console.error("Login error:", err);
+                showAlert(loginAlert, err.message || "Invalid credentials. Please try again.");
+                loginBtn.textContent = "Sign In";
+                loginBtn.disabled = false;
+            }
+        });
+
+        // ==========================================
+        // 6. REGISTER (SUPABASE AUTH + app_user SYNC)
+        // ==========================================
+        const registerForm = document.getElementById("registerForm");
+        const regBtn = document.getElementById("regBtn");
+
+        registerForm.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            clearAlerts();
+
+            const fullName = document.getElementById("regFullName").value.trim();
+            const email = document.getElementById("regEmail").value.trim();
+            const password = document.getElementById("regPassword").value;
+            const confirmPassword = document.getElementById("regConfirmPassword").value;
+
+            if (password !== confirmPassword) {
+                showAlert(registerAlert, "Passwords do not match.");
+                return;
+            }
+
+            regBtn.textContent = "Creating Account...";
+            regBtn.disabled = true;
+
+            try {
+                // 1. Supabase Auth Sign Up
+                const { data, error } = await supabase.auth.signUp({
+                    email: email,
+                    password: password,
+                    options: { data: { full_name: fullName } }
+                });
+
+                if (error) throw error;
+
+                // 2. Insert into app_user table (Same as Flutter APK)
+                if (data?.user) {
+                    try {
+                        await supabase.from('app_user').upsert({
+                            id: data.user.id,
+                            full_name: fullName || 'User',
+                            email: email,
+                            user_type: 'General User'
+                        });
+                    } catch (_) {}
+                }
+
+                regBtn.textContent = "Registered ✓";
+                regBtn.style.background = "linear-gradient(135deg, #10b981, #059669)";
+                showAlert(registerAlert, "Account created successfully! Switching to sign in...", "success");
+
+                setTimeout(() => {
+                    document.getElementById("loginEmail").value = email;
+                    document.getElementById("loginPassword").value = password;
+                    cardFlipper.classList.remove("is-flipped");
+                    showAlert(loginAlert, "Account registered! Click Sign In to launch ANEX.", "success");
+                    regBtn.textContent = "Create Account";
+                    regBtn.disabled = false;
+                    regBtn.style.background = "";
+                }, 1500);
+
+            } catch (err) {
+                console.error("Register error:", err);
+                showAlert(registerAlert, err.message || "Failed to create account.");
+                regBtn.textContent = "Create Account";
+                regBtn.disabled = false;
+            }
+        });
+
+        // ==========================================
+        // 7. FORGOT PASSWORD & SOCIAL
+        // ==========================================
+        document.getElementById("forgotBtn").addEventListener("click", async (e) => {
+            e.preventDefault();
+            const email = document.getElementById("loginEmail").value.trim();
+            if (!email) {
+                showAlert(loginAlert, "Enter your email address first, then click Forgot password.");
+                return;
+            }
+            try {
+                loginAlert.className = 'alert-banner success';
+                loginAlert.textContent = "Sending reset link...";
+                const { error } = await supabase.auth.resetPasswordForEmail(email, {
+                    redirectTo: window.location.origin + '/login.html'
+                });
+                if (error) throw error;
+                showAlert(loginAlert, "Password reset instructions sent to your email!", "success");
+            } catch (err) {
+                showAlert(loginAlert, err.message || "Could not send reset email.");
+            }
+        });
+
+        async function handleSocial(provider) {
+            try {
+                loginBtn.textContent = `Connecting ${provider}...`;
+                loginBtn.disabled = true;
+                const { error } = await supabase.auth.signInWithOAuth({
+                    provider: provider.toLowerCase(),
+                    options: { redirectTo: window.location.origin + '/' }
+                });
+                if (error) throw error;
+            } catch (err) {
+                showAlert(loginAlert, `${provider} login note: ${err.message || 'OAuth provider not enabled in Supabase'}`);
+                loginBtn.textContent = "Sign In";
+                loginBtn.disabled = false;
+            }
+        }
+    </script>
+
+</body>
+</html>

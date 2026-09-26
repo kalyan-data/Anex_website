@@ -1,0 +1,6 @@
+.wrangler/
+*.bat
+*.cmd
+wrangler.jsonc
+.assetsignore
+_redirects
