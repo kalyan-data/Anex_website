@@ -1,5 +1,6 @@
 .git/
 .wrangler/
+worker.js
 *.bat
 *.cmd
 wrangler.jsonc
